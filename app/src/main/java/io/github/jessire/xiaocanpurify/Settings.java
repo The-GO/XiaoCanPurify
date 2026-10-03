@@ -28,10 +28,12 @@ public final class Settings {
     public static final String KEY_USER_PAGE = "user_page";
     public static final String KEY_NETWORK = "network_interceptor";
     public static final String KEY_FLUTTER_GUARD = "flutter_guard";
+    public static final String KEY_ANTI_DETECTION = "anti_detection";
 
     public static final String[] ALL_KEYS = {
             KEY_AD_BLOCKER, KEY_POPUP_BLOCKER, KEY_BOTTOM_BAR, KEY_HOME_PAGE,
-            KEY_ORDER_PAGE, KEY_USER_PAGE, KEY_NETWORK, KEY_FLUTTER_GUARD
+            KEY_ORDER_PAGE, KEY_USER_PAGE, KEY_NETWORK, KEY_FLUTTER_GUARD,
+            KEY_ANTI_DETECTION
     };
 
     private static volatile Context sContext;
@@ -46,6 +48,10 @@ public final class Settings {
      */
     public static void init(Context context) {
         if (context != null) {
+            if (sContext == null) {
+                // 首次拿到真实 Context：清空之前用默认值读出的缓存，重新按真实设置读取
+                sCache = null;
+            }
             sContext = context.getApplicationContext();
         }
     }

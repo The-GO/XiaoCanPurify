@@ -22,6 +22,7 @@ public class MainActivity extends Activity {
             {Settings.KEY_USER_PAGE, "我的页净化", "个人中心推广模块清理"},
             {Settings.KEY_NETWORK, "网络层过滤", "拦截广告配置与埋点上报请求"},
             {Settings.KEY_FLUTTER_GUARD, "Flutter 页面守卫", "拦截广告/营销类 Flutter 路由跳转"},
+            {Settings.KEY_ANTI_DETECTION, "反 root/框架检测", "绕过 RootBeer/su/包名/Xposed 检测及检测弹窗"},
     };
 
     @Override

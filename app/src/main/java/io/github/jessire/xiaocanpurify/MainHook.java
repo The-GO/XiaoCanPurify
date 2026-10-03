@@ -17,6 +17,7 @@ public final class MainHook extends XposedModule {
     public static final String TARGET_PACKAGE = "com.realtech.xiaocan";
     public static final String LOG_TAG = "XiaoCanPurify";
     private static final AtomicBoolean HOOKED = new AtomicBoolean(false);
+    private static final AtomicBoolean EARLY_HOOKED = new AtomicBoolean(false);
     private static volatile MainHook instance;
 
     @Override
@@ -74,10 +75,13 @@ public final class MainHook extends XposedModule {
         try {
             Method attachBaseContext = Application.class.getDeclaredMethod("attachBaseContext", Context.class);
             xposed.hook(attachBaseContext).intercept(chain -> {
-                Object result = chain.proceed();
                 Context context = (Context) chain.getArg(0);
                 if (context != null) {
                     Settings.init(context);
+                    installEarlyHooks(xposed);
+                }
+                Object result = chain.proceed();
+                if (context != null) {
                     ClassLoader cl = context.getClassLoader();
                     if (canLoadTargetClasses(cl)) {
                         installAll(xposed, cl);
@@ -125,11 +129,43 @@ public final class MainHook extends XposedModule {
         }
     }
 
+    /**
+     * 安装不依赖目标 ClassLoader 的系统级 hook（反检测）。
+     * 在 Application.attachBaseContext 之前执行，早于 App 自身的 onCreate，
+     * 因此能对抗 App 启动期的 root/框架检测。只安装一次。
+     */
+    private static void installEarlyHooks(XposedInterface xposed) {
+        if (!EARLY_HOOKED.compareAndSet(false, true)) {
+            return;
+        }
+        if (!Settings.isEnabled(Settings.KEY_ANTI_DETECTION)) {
+            log("AntiDetectBypass disabled by settings, skipped.");
+            return;
+        }
+        try {
+            AntiDetectBypass.installEarly(xposed);
+            log("AntiDetectBypass early hooks installed.");
+        } catch (Throwable t) {
+            log("AntiDetectBypass early install error: " + t);
+        }
+    }
+
     public static synchronized void installAll(XposedInterface xposed, ClassLoader classLoader) {
         if (!HOOKED.compareAndSet(false, true)) {
             return;
         }
         log("Target classes available, installing purifier hooks with ClassLoader: " + classLoader);
+
+        if (Settings.isEnabled(Settings.KEY_ANTI_DETECTION)) {
+            try {
+                AntiDetectBypass.installLate(xposed, classLoader);
+                log("AntiDetectBypass late hooks installed.");
+            } catch (Throwable t) {
+                log("AntiDetectBypass late install error: " + t);
+            }
+        } else {
+            log("AntiDetectBypass disabled by settings, skipped.");
+        }
 
         if (Settings.isEnabled(Settings.KEY_AD_BLOCKER)) {
             try {

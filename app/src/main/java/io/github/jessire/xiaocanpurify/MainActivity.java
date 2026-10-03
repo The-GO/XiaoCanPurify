@@ -4,12 +4,26 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.view.View;
+import android.view.Gravity;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
+
+    private static final String[][] ITEMS = {
+            {Settings.KEY_AD_BLOCKER, "广告拦截", "开屏/插屏/信息流/Flutter 广告、静默任务等"},
+            {Settings.KEY_POPUP_BLOCKER, "弹窗拦截", "营销/红包/升级/元宝等各类弹窗"},
+            {Settings.KEY_BOTTOM_BAR, "底部导航精简", "移除「会员」「福利」标签，只留首页/订单/我"},
+            {Settings.KEY_HOME_PAGE, "首页净化", "红包悬浮球/新手引导/Banner/推广卡片"},
+            {Settings.KEY_ORDER_PAGE, "订单页净化", "订单列表中的广告位清理"},
+            {Settings.KEY_USER_PAGE, "我的页净化", "个人中心推广模块清理"},
+            {Settings.KEY_NETWORK, "网络层过滤", "拦截广告配置与埋点上报请求"},
+            {Settings.KEY_FLUTTER_GUARD, "Flutter 页面守卫", "拦截广告/营销类 Flutter 路由跳转"},
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,41 +71,24 @@ public class MainActivity extends Activity {
 
         // Section Title
         TextView sectionTitle = new TextView(this);
-        sectionTitle.setText("已启用的功能");
+        sectionTitle.setText("功能开关");
         sectionTitle.setTextSize(16);
         sectionTitle.setTypeface(Typeface.DEFAULT_BOLD);
         sectionTitle.setTextColor(Color.parseColor("#333333"));
         sectionTitle.setPadding(0, dp2px(16), 0, dp2px(8));
         layout.addView(sectionTitle);
 
-        // Feature 1
-        layout.addView(createFeatureCard("去除所有广告",
-                "• 瞬间跳过冷启动开屏广告\n" +
-                "• 彻底阻止切后台返回的冷热启动开屏广告\n" +
-                "• 拦截穿山甲、优量汇、快手、Sigmob、Baidu、WindMill 等全屏/激励广告\n" +
-                "• 屏蔽首页与到店页信息流/卡片广告\n" +
-                "• 禁用后台静默隐蔽任务引擎 (SilentTaskEngine)"));
+        for (String[] item : ITEMS) {
+            layout.addView(createSwitchCard(item[0], item[1], item[2]));
+        }
 
-        // Feature 2
-        layout.addView(createFeatureCard("去除各类弹窗",
-                "• 拦截首页营销弹窗、首单全返活动弹窗\n" +
-                "• 拦截抖音商城红包弹窗、蛋糕/周年庆弹窗\n" +
-                "• 屏蔽应用强制检查升级弹窗\n" +
-                "• 屏蔽元宝升级提示弹窗、开学季及分享弹窗\n" +
-                "• 净化全局弹窗队列与 Compose 浮动弹窗"));
-
-        // Feature 3
-        layout.addView(createFeatureCard("精简底部导航栏",
-                "• 仅保留「首页」、「订单」、「我」\n" +
-                "• 彻底移除「会员」和「福利/赚钱」两个冗余标签\n" +
-                "• 自动适配 3 个 Tab 的点击与页面切换联动\n" +
-                "• 消除点击跳转会员与登录拦截干扰"));
-
-        // Feature 4
-        layout.addView(createFeatureCard("网络层广告过滤",
-                "• 拦截 placement 广告配置与数据请求 (/g/pa)\n" +
-                "• 阻断 AdProLink、Sigmob、CSJ、GDT 等广告网络流量\n" +
-                "• 拦截埋点与追踪数据上报 (Burying / SensorsData)"));
+        // Footer note
+        TextView footer = new TextView(this);
+        footer.setText("修改开关后，需强制停止并重启「小蚕霸王餐」才会生效。");
+        footer.setTextSize(12);
+        footer.setTextColor(Color.parseColor("#999999"));
+        footer.setPadding(0, dp2px(4), 0, 0);
+        layout.addView(footer);
 
         scrollView.addView(layout);
         setContentView(scrollView);
@@ -110,22 +107,42 @@ public class MainActivity extends Activity {
         return card;
     }
 
-    private LinearLayout createFeatureCard(String title, String desc) {
+    private LinearLayout createSwitchCard(final String key, String title, String desc) {
         LinearLayout card = createCard();
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+
+        LinearLayout textLayout = new LinearLayout(this);
+        textLayout.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        textLayout.setLayoutParams(tlp);
+
         TextView t = new TextView(this);
         t.setText(title);
         t.setTextSize(14);
         t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setTextColor(Color.parseColor("#222222"));
-        card.addView(t);
+        textLayout.addView(t);
 
         TextView d = new TextView(this);
         d.setText(desc);
         d.setTextSize(12);
         d.setTextColor(Color.parseColor("#666666"));
-        d.setLineSpacing(dp2px(2), 1.15f);
-        d.setPadding(0, dp2px(6), 0, 0);
-        card.addView(d);
+        d.setPadding(0, dp2px(4), 0, 0);
+        textLayout.addView(d);
+
+        Switch sw = new Switch(this);
+        sw.setChecked(Settings.isEnabledLocal(this, key));
+        sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                Settings.setEnabledLocal(MainActivity.this, key, isChecked);
+            }
+        });
+
+        card.addView(textLayout);
+        card.addView(sw);
         return card;
     }
 

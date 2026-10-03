@@ -33,6 +33,8 @@ public final class MainHook extends XposedModule {
         instance = this;
         log("Target package ready: " + param.getPackageName());
 
+        Settings.init(currentAppContext());
+
         ClassLoader initialLoader = param.getClassLoader();
         if (canLoadTargetClasses(initialLoader)) {
             installAll(this, initialLoader);
@@ -53,6 +55,21 @@ public final class MainHook extends XposedModule {
         }
     }
 
+    /**
+     * Best-effort Application Context via ActivityThread.
+     * May return null if called before the app is attached; callers must tolerate null.
+     */
+    private static Context currentAppContext() {
+        try {
+            Class<?> at = Class.forName("android.app.ActivityThread");
+            Method m = at.getMethod("currentApplication");
+            Object app = m.invoke(null);
+            return (Context) app;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     private void hookLifecycle(XposedInterface xposed) {
         try {
             Method attachBaseContext = Application.class.getDeclaredMethod("attachBaseContext", Context.class);
@@ -60,6 +77,7 @@ public final class MainHook extends XposedModule {
                 Object result = chain.proceed();
                 Context context = (Context) chain.getArg(0);
                 if (context != null) {
+                    Settings.init(context);
                     ClassLoader cl = context.getClassLoader();
                     if (canLoadTargetClasses(cl)) {
                         installAll(xposed, cl);
@@ -77,6 +95,7 @@ public final class MainHook extends XposedModule {
                 Object result = chain.proceed();
                 Application app = (Application) chain.getThisObject();
                 if (app != null) {
+                    Settings.init(app);
                     ClassLoader cl = app.getClassLoader();
                     if (canLoadTargetClasses(cl)) {
                         installAll(xposed, cl);
@@ -93,6 +112,7 @@ public final class MainHook extends XposedModule {
             xposed.hook(actOnCreate).intercept(chain -> {
                 Activity activity = (Activity) chain.getThisObject();
                 if (activity != null) {
+                    Settings.init(activity);
                     ClassLoader cl = activity.getClassLoader();
                     if (canLoadTargetClasses(cl)) {
                         installAll(xposed, cl);
@@ -111,61 +131,93 @@ public final class MainHook extends XposedModule {
         }
         log("Target classes available, installing purifier hooks with ClassLoader: " + classLoader);
 
-        try {
-            AdBlocker.install(xposed, classLoader);
-            log("AdBlocker installed successfully.");
-        } catch (Throwable t) {
-            log("AdBlocker install error: " + t);
+        if (Settings.isEnabled(Settings.KEY_AD_BLOCKER)) {
+            try {
+                AdBlocker.install(xposed, classLoader);
+                log("AdBlocker installed successfully.");
+            } catch (Throwable t) {
+                log("AdBlocker install error: " + t);
+            }
+        } else {
+            log("AdBlocker disabled by settings, skipped.");
         }
 
-        try {
-            PopupBlocker.install(xposed, classLoader);
-            log("PopupBlocker installed successfully.");
-        } catch (Throwable t) {
-            log("PopupBlocker install error: " + t);
+        if (Settings.isEnabled(Settings.KEY_POPUP_BLOCKER)) {
+            try {
+                PopupBlocker.install(xposed, classLoader);
+                log("PopupBlocker installed successfully.");
+            } catch (Throwable t) {
+                log("PopupBlocker install error: " + t);
+            }
+        } else {
+            log("PopupBlocker disabled by settings, skipped.");
         }
 
-        try {
-            BottomBarPurifier.install(xposed, classLoader);
-            log("BottomBarPurifier installed successfully.");
-        } catch (Throwable t) {
-            log("BottomBarPurifier install error: " + t);
+        if (Settings.isEnabled(Settings.KEY_BOTTOM_BAR)) {
+            try {
+                BottomBarPurifier.install(xposed, classLoader);
+                log("BottomBarPurifier installed successfully.");
+            } catch (Throwable t) {
+                log("BottomBarPurifier install error: " + t);
+            }
+        } else {
+            log("BottomBarPurifier disabled by settings, skipped.");
         }
 
-        try {
-            HomePagePurifier.install(xposed, classLoader);
-            log("HomePagePurifier installed successfully.");
-        } catch (Throwable t) {
-            log("HomePagePurifier install error: " + t);
+        if (Settings.isEnabled(Settings.KEY_HOME_PAGE)) {
+            try {
+                HomePagePurifier.install(xposed, classLoader);
+                log("HomePagePurifier installed successfully.");
+            } catch (Throwable t) {
+                log("HomePagePurifier install error: " + t);
+            }
+        } else {
+            log("HomePagePurifier disabled by settings, skipped.");
         }
 
-        try {
-            OrderPagePurifier.install(xposed, classLoader);
-            log("OrderPagePurifier installed successfully.");
-        } catch (Throwable t) {
-            log("OrderPagePurifier install error: " + t);
+        if (Settings.isEnabled(Settings.KEY_ORDER_PAGE)) {
+            try {
+                OrderPagePurifier.install(xposed, classLoader);
+                log("OrderPagePurifier installed successfully.");
+            } catch (Throwable t) {
+                log("OrderPagePurifier install error: " + t);
+            }
+        } else {
+            log("OrderPagePurifier disabled by settings, skipped.");
         }
 
-        try {
-            UserPagePurifier.install(xposed, classLoader);
-            log("UserPagePurifier installed successfully.");
-        } catch (Throwable t) {
-            log("UserPagePurifier install error: " + t);
+        if (Settings.isEnabled(Settings.KEY_USER_PAGE)) {
+            try {
+                UserPagePurifier.install(xposed, classLoader);
+                log("UserPagePurifier installed successfully.");
+            } catch (Throwable t) {
+                log("UserPagePurifier install error: " + t);
+            }
+        } else {
+            log("UserPagePurifier disabled by settings, skipped.");
         }
 
-        try {
-            NetworkAdInterceptor.install(xposed, classLoader);
-            log("NetworkAdInterceptor installed successfully.");
-        } catch (Throwable t) {
-            log("NetworkAdInterceptor install error: " + t);
+        if (Settings.isEnabled(Settings.KEY_NETWORK)) {
+            try {
+                NetworkAdInterceptor.install(xposed, classLoader);
+                log("NetworkAdInterceptor installed successfully.");
+            } catch (Throwable t) {
+                log("NetworkAdInterceptor install error: " + t);
+            }
+        } else {
+            log("NetworkAdInterceptor disabled by settings, skipped.");
         }
 
 
-        try {
-            FlutterPageGuard.install(xposed, classLoader);
-            log("FlutterPageGuard installed successfully.");
-        } catch (Throwable t) {
-            log("FlutterPageGuard install error: " + t);
+        if (Settings.isEnabled(Settings.KEY_FLUTTER_GUARD)) {
+            try {
+                FlutterPageGuard.install(xposed, classLoader);
+                log("FlutterPageGuard installed successfully.");
+            } catch (Throwable t) {
+                log("FlutterPageGuard install error: " + t);
+            }
+        } else {
+            log("FlutterPageGuard disabled by settings, skipped.");
         }
 
         log("All XiaoCanPurify hooks successfully initialized!");
